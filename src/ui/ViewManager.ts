@@ -47,8 +47,18 @@ export class ViewManager {
     const existingLeaf = this.getExistingLeaf();
 
     if (existingLeaf) {
-      this.app.workspace.revealLeaf(existingLeaf);
-      return;
+      // Check if the existing leaf is in the correct location
+      const isInSidebar = existingLeaf.getRoot() === this.app.workspace.rightSplit;
+      const shouldBeInSidebar = this.settings.defaultViewLocation !== "main";
+
+      if (isInSidebar === shouldBeInSidebar) {
+        // Location matches, just reveal it
+        this.app.workspace.revealLeaf(existingLeaf);
+        return;
+      }
+
+      // Location doesn't match, detach the old leaf
+      existingLeaf.detach();
     }
 
     // Create new leaf based on defaultViewLocation setting

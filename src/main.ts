@@ -129,11 +129,17 @@ export default class OpenCodePlugin extends Plugin {
       },
     });
 
-    if (this.settings.autoStart) {
-      this.app.workspace.onLayoutReady(async () => {
-        await this.startServer();
-      });
-    }
+    // Fix view location after layout is restored
+    this.app.workspace.onLayoutReady(() => {
+      // Small delay to ensure workspace is fully restored
+      setTimeout(() => {
+        this.fixViewLocation();
+      }, 100);
+      
+      if (this.settings.autoStart) {
+        void this.startServer();
+      }
+    });
 
     this.contextManager.updateSettings(this.settings);
     this.processManager.on("stateChange", (state: ServerState) => {
@@ -151,6 +157,46 @@ export default class OpenCodePlugin extends Plugin {
     this.contextManager.destroy();
     await this.stopServer();
     this.app.workspace.detachLeavesOfType(OPENCODE_VIEW_TYPE);
+  }
+
+  /**
+   * Fix view location after Obsidian restores workspace
+   * Obsidian may restore the view to the sidebar from workspace.json
+   * This method checks and moves it to the correct location
+   */
+  private fixViewLocation(): void {
+    const leaves = this.app.workspace.getLeavesOfType(OPENCODE_VIEW_TYPE);
+    if (leaves.length === 0) {
+      return; // No view to fix
+    }
+
+    const leaf = leaves[0];
+    const isInSidebar = leaf.getRoot() === this.app.workspace.rightSplit;
+    const shouldBeInSidebar = this.settings.defaultViewLocation !== "main";
+
+    if (isInSidebar === shouldBeInSidebar) {
+      return; // Already in correct location
+    }
+
+    console.log("[OpenCode] Fixing view location...");
+    
+    // Get the current view state
+    const state = leaf.getViewState();
+    
+    // Detach the old leaf
+    leaf.detach();
+    
+    // Create new leaf in correct location
+    let newLeaf: WorkspaceLeaf | null = null;
+    if (this.settings.defaultViewLocation === "main") {
+      newLeaf = this.app.workspace.getLeaf("tab");
+    } else {
+      newLeaf = this.app.workspace.getRightLeaf(false);
+    }
+    
+    if (newLeaf) {
+      void newLeaf.setViewState(state);
+    }
   }
 
   async loadSettings(): Promise<void> {
