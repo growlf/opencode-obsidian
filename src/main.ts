@@ -130,6 +130,9 @@ export default class OpenCodePlugin extends Plugin {
     });
 
     // Fix view location after layout is restored
+    // WHY: Obsidian restores workspace from workspace.json AFTER onLayoutReady fires
+    // but the restoration might still be in progress. The 100ms delay ensures
+    // the workspace is fully restored before we check/correct the view location.
     this.app.workspace.onLayoutReady(() => {
       // Small delay to ensure workspace is fully restored
       setTimeout(() => {
@@ -160,9 +163,20 @@ export default class OpenCodePlugin extends Plugin {
   }
 
   /**
-   * Fix view location after Obsidian restores workspace
-   * Obsidian may restore the view to the sidebar from workspace.json
-   * This method checks and moves it to the correct location
+   * PROBLEM: Obsidian saves view locations in workspace.json when you close the vault.
+   * When reopening, it restores the OpenCode view to its saved location (usually sidebar),
+   * COMPLETELY IGNORING the user's "Default view location" setting.
+   * 
+   * WHY THIS FIX IS NEEDED:
+   * - User sets "Main window" in settings, but view keeps opening in sidebar
+   * - Obsidian's workspace restoration happens BEFORE our plugin settings are fully loaded
+   * - The plugin needs to detect and correct the mismatch AFTER workspace is restored
+   * 
+   * HOW THIS HELPS:
+   * - Checks if restored view matches user's location preference
+   * - If mismatch detected, detaches the incorrectly-placed view
+   * - Recreates view in correct location (sidebar vs main tab)
+   * - Ensures user's setting is actually respected
    */
   private fixViewLocation(): void {
     const leaves = this.app.workspace.getLeavesOfType(OPENCODE_VIEW_TYPE);
