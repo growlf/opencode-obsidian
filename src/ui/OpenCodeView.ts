@@ -136,6 +136,18 @@ export class OpenCodeView extends ItemView {
 
     const actionsEl = headerEl.createDiv({ cls: "opencode-header-actions" });
 
+    if (this.plugin.hasUpdate) {
+      const updateBadge = actionsEl.createEl("a", {
+        text: `v${this.plugin.hasUpdate} available`,
+        cls: "opencode-update-badge",
+        href: "https://github.com/growlf/opencode-obsidian/releases/latest",
+      });
+      updateBadge.addEventListener("click", (e) => {
+        e.preventDefault();
+        window.open(updateBadge.href, "_blank");
+      });
+    }
+
     const reloadButton = actionsEl.createEl("button", {
       attr: { "aria-label": "Reload" },
     });

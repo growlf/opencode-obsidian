@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, Notice, EventRef, MarkdownView } from "obsidian";
+import { Plugin, WorkspaceLeaf, Notice, EventRef, MarkdownView, requestUrl } from "obsidian";
 import { OpenCodeSettings, DEFAULT_SETTINGS, OPENCODE_VIEW_TYPE } from "./types";
 import { OpenCodeView } from "./ui/OpenCodeView";
 import { ViewManager } from "./ui/ViewManager";
@@ -18,6 +18,7 @@ export default class OpenCodePlugin extends Plugin {
   private viewManager: ViewManager;
   private cachedIframeUrl: string | null = null;
   private lastBaseUrl: string | null = null;
+  hasUpdate: string | null = null;
 
   async onload(): Promise<void> {
     console.log("Loading OpenCode plugin");
@@ -152,6 +153,8 @@ export default class OpenCodePlugin extends Plugin {
     });
 
     this.registerCleanupHandlers();
+
+    this.checkForUpgrade();
 
     console.log("OpenCode plugin loaded");
   }
@@ -348,6 +351,62 @@ export default class OpenCodePlugin extends Plugin {
     }
     console.log("[OpenCode] Using vault path as project directory:", vaultPath);
     return vaultPath;
+  }
+
+  private checkForUpgrade(): void {
+    const currentVersion = this.manifest.version;
+    const lastSeen = this.settings.lastSeenVersion;
+
+    if (currentVersion !== lastSeen) {
+      const releaseUrl = `https://github.com/growlf/opencode-obsidian/releases/tag/v${currentVersion}`;
+      if (!lastSeen) {
+        new Notice(`OpenCode v${currentVersion} loaded`, 5000);
+      } else {
+        new Notice(
+          `OpenCode updated to v${currentVersion} — check what's new!`,
+          8000
+        );
+      }
+      this.settings.lastSeenVersion = currentVersion;
+      this.saveData(this.settings);
+    }
+
+    if (this.settings.checkForUpdates) {
+      void this.checkForNewVersion();
+    }
+  }
+
+  private async checkForNewVersion(): Promise<void> {
+    const now = Date.now();
+    const oneDay = 24 * 60 * 60 * 1000;
+    if (now - this.settings.lastUpdateCheck < oneDay) {
+      return;
+    }
+
+    this.settings.lastUpdateCheck = now;
+    await this.saveData(this.settings);
+
+    try {
+      const response = await requestUrl({
+        url: "https://api.github.com/repos/growlf/opencode-obsidian/releases/latest",
+        headers: { "Accept": "application/vnd.github.v3+json" },
+      });
+
+      if (response.status === 200) {
+        const data = response.json;
+        const latestTag = data.tag_name.replace(/^v/, "");
+        const currentVersion = this.manifest.version;
+        if (latestTag !== currentVersion) {
+          this.hasUpdate = latestTag;
+          new Notice(
+            `OpenCode v${latestTag} available — update your plugin!`,
+            10000
+          );
+        }
+      }
+    } catch (err) {
+      console.debug("[OpenCode] Update check failed:", err.message);
+    }
   }
 
   private registerCleanupHandlers(): void {

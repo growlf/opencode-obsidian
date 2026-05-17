@@ -13,6 +13,9 @@ export interface OpenCodeSettings {
   maxSelectionLength: number;
   customCommand: string;
   useCustomCommand: boolean;
+  lastSeenVersion: string;
+  lastUpdateCheck: number;
+  checkForUpdates: boolean;
 }
 
 export const DEFAULT_SETTINGS: OpenCodeSettings = {
@@ -28,6 +31,9 @@ export const DEFAULT_SETTINGS: OpenCodeSettings = {
   maxSelectionLength: 2000,
   customCommand: "",
   useCustomCommand: false,
+  lastSeenVersion: "",
+  lastUpdateCheck: 0,
+  checkForUpdates: true,
 };
 
 export const OPENCODE_VIEW_TYPE = "opencode-view";

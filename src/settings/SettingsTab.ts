@@ -187,6 +187,20 @@ export class OpenCodeSettingTab extends PluginSettingTab {
           })
       );
 
+    new Setting(containerEl)
+      .setName("Check for updates")
+      .setDesc(
+        "Periodically check GitHub for new plugin releases and show a notification"
+      )
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.settings.checkForUpdates)
+          .onChange(async (value) => {
+            this.settings.checkForUpdates = value;
+            await this.onSettingsChange();
+          })
+      );
+
     containerEl.createEl("h3", { text: "Workspace Context" });
 
     new Setting(containerEl)
